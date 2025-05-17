@@ -1,4 +1,4 @@
-from flask import render_template, current_app
+from flask import render_template, jsonify, current_app
 from ..models import SavedPage
 from . import main_bp
 import json
@@ -18,6 +18,7 @@ def fetch_gumloop_extraction(run_id):
     else:
         logger.error("fetch_gumloop_extraction function not available in app config")
         return {"error": "Extraction function not configured"}
+
 
 @main_bp.route('/')
 def index():
@@ -63,6 +64,14 @@ def page_detail(page_id):
     
     return render_template('page_detail.html', page=page, extracted_content=extracted_content)
 
+
 @main_bp.route('/about')
 def about():
     return render_template('about.html')
+
+
+# New API endpoint for recent bookmarks
+@main_bp.route('/api/recent-pages')
+def api_recent_pages():
+    recent = SavedPage.query.order_by(SavedPage.saved_at.desc()).limit(5).all()
+    return jsonify([page.to_dict() for page in recent]) 
