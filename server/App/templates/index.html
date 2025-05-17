@@ -14,7 +14,7 @@
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
                                 <h3 class="text-lg font-semibold text-gray-900">
-                                    <a href="{{ url_for('page_detail', page_id=page.id) }}" class="hover:text-blue-600">
+                                    <a href="{{ url_for('main.page_detail', page_id=page.id) }}" class="hover:text-blue-600">
                                         {{ page.title }}
                                     </a>
                                 </h3>
@@ -24,7 +24,7 @@
                                     </a>
                                 </p>
                                 <p class="text-sm text-gray-500 mt-1">
-                                    Saved on: {{ page.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    Saved on: {{ page.saved_at.strftime('%Y-%m-%d %H:%M:%S') }}
                                 </p>
                                 {% if page.saved_item_id %}
                                     <p class="text-sm text-gray-500">
@@ -50,4 +50,4 @@
         {% endif %}
     </div>
 </div>
-{% endblock %} 
+{% endblock %}
