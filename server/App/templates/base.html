@@ -3,19 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% endblock %} - Flask App</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>{% block title %}Second Brain{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .gumloop-data {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
 </head>
-<body>
-    <nav>
-        <a href="{{ url_for('main.index') }}">Home</a>
-        <a href="{{ url_for('main.about') }}">About</a>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-xl font-bold text-gray-800">Second Brain</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
     </nav>
-    
-    <main>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {% block content %}{% endblock %}
     </main>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <footer class="bg-white shadow-lg mt-8">
+        <div class="max-w-7xl mx-auto py-4 px-4 text-center text-gray-500 text-sm">
+            Powered by Gumloop
+        </div>
+    </footer>
 </body>
 </html> 

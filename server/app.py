@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from App.routes import main_bp
 from App.models import db, SavedPage
@@ -271,6 +271,17 @@ def process_url():
             "message": f"Error processing URL: {str(e)}",
             "status": "error"
         }), 500
+
+@app.route('/')
+def index():
+    # Get all saved pages, ordered by most recent first
+    saved_pages = SavedPage.query.order_by(SavedPage.id.desc()).all()
+    return render_template('index.html', saved_pages=saved_pages)
+
+@app.route('/page/<int:page_id>')
+def page_detail(page_id):
+    page = SavedPage.query.get_or_404(page_id)
+    return render_template('page_detail.html', page=page)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
