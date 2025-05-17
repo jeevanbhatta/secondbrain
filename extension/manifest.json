@@ -5,25 +5,12 @@
     "description": "Chrome extension for SecondBrain app",
     "permissions": [
         "activeTab",
-        "storage"
+        "tabs"
     ],
     "host_permissions": [
-        "http://localhost:5000/*"
+        "http://localhost:5001/*"
     ],
     "action": {
         "default_popup": "popup.html"
-    },
-    "background": {
-        "service_worker": "background.js"
-    },
-    "content_scripts": [
-        {
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "content.js"
-            ]
-        }
-    ]
+    }
 }
