@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Second Brain{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@tailwindcss/typography@0.4.1/dist/typography.min.css" rel="stylesheet">
     <style>
         .gumloop-data {
             max-height: 200px;
@@ -14,6 +15,64 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+        .prose a {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+        .prose a:hover {
+            color: #2563eb;
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4 {
+            margin-top: 1.25em;
+            margin-bottom: 0.75em;
+            font-weight: 600;
+        }
+        .prose h1 {
+            font-size: 1.875em;
+        }
+        .prose h2 {
+            font-size: 1.5em;
+        }
+        .prose h3 {
+            font-size: 1.25em;
+        }
+        .prose p {
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+        .prose ul, .prose ol {
+            margin-top: 1em;
+            margin-bottom: 1em;
+            padding-left: 1.5em;
+        }
+        .prose ul {
+            list-style-type: disc;
+        }
+        .prose ol {
+            list-style-type: decimal;
+        }
+        .prose li {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        .prose blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1em;
+            margin-left: 0;
+            margin-right: 0;
+            font-style: italic;
+        }
+        .prose hr {
+            margin-top: 2em;
+            margin-bottom: 2em;
+            border-top: 1px solid #e5e7eb;
+        }
+        .prose code {
+            background-color: #f3f4f6;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25em;
+            font-size: 0.875em;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -22,7 +81,7 @@
             <div class="flex justify-between h-16">
                 <div class="flex">
                     <div class="flex-shrink-0 flex items-center">
-                        <h1 class="text-xl font-bold text-gray-800">Second Brain</h1>
+                        <a href="{{ url_for('main.index') }}" class="text-xl font-bold text-gray-800 hover:text-blue-600">Second Brain</a>
                     </div>
                 </div>
             </div>

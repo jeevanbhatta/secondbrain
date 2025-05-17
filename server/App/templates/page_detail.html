@@ -3,7 +3,7 @@
 {% block title %}{{ page.title }} - Details{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto bg-white shadow rounded-lg p-6 mt-8">
+<div class="max-w-4xl mx-auto bg-white shadow rounded-lg p-6 mt-8">
     <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ page.title }}</h2>
     <p class="text-sm text-gray-500 mb-2">
         <a href="{{ page.url }}" target="_blank" class="hover:text-blue-600 break-all">{{ page.url }}</a>
@@ -14,54 +14,122 @@
     {% endif %}
 
     {% if extracted_content %}
-        <div class="mt-6 mb-8">
-            <h3 class="text-xl font-medium text-gray-700 mb-4">Processed Content</h3>
-            <div class="bg-gray-50 rounded p-5 extracted-content">
-                {% if extracted_content.run_id %}
-                    <p class="mb-4">
-                        <a href="{{ extracted_content.extraction_url }}" target="_blank" class="text-blue-600 font-medium hover:underline">
-                            View Full Extraction Results on Gumloop &rarr;
-                        </a>
-                    </p>
-                {% endif %}
-                
-                {% if extracted_content.message %}
-                    <p class="text-gray-700 mb-4">{{ extracted_content.message }}</p>
-                {% endif %}
-
-                {% if extracted_content.content %}
-                    <div class="mt-4 bg-white p-4 rounded shadow-sm">
-                        <h4 class="text-lg font-medium mb-2">{{ extracted_content.content.title }}</h4>
-                        <p class="text-gray-700">{{ extracted_content.content.description }}</p>
-                    </div>
-                {% endif %}
-                
-                {% if page.gumloop_data.url %}
-                    <div class="mt-4 pt-4 border-t border-gray-200">
-                        <p class="mb-2">
-                            <a href="{{ page.gumloop_data.url }}" target="_blank" class="text-blue-600 hover:underline">
-                                View Pipeline Results &rarr;
-                            </a>
-                        </p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
-
-    {% if page.gumloop_data %}
         <div class="mt-6">
-            <h3 class="text-lg font-medium text-gray-700 mb-2">API Response</h3>
-            <div class="bg-gray-50 rounded p-3 gumloop-data">
-                <pre class="text-sm text-gray-800">{{ page.gumloop_data | tojson(indent=2) }}</pre>
+            <!-- Status Badge -->
+            <div class="mb-4 flex justify-between items-center">
+                <div>
+                    <span class="text-sm font-medium mr-2">Status:</span>
+                    {% if extracted_content.state == "DONE" %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            {{ extracted_content.state }}
+                        </span>
+                    {% elif extracted_content.state == "FAILED" %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                            {{ extracted_content.state }}
+                        </span>
+                    {% elif extracted_content.state == "RUNNING" %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {{ extracted_content.state }}
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                            {{ extracted_content.state }}
+                        </span>
+                    {% endif %}
+                </div>
+                
+                {% if extracted_content.extraction_url %}
+                    <a href="{{ extracted_content.extraction_url }}" target="_blank" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                        Open in Gumloop →
+                    </a>
+                {% endif %}
             </div>
+
+            <!-- Main Content Section -->
+            {% if extracted_content.outputs and extracted_content.outputs.output %}
+                <div class="mb-8">
+                    <h3 class="text-xl font-medium text-gray-800 mb-4 pb-2 border-b">Extracted Content</h3>
+                    <div class="bg-white p-6 rounded shadow-sm overflow-auto max-h-screen border border-gray-200">
+                        <div class="prose prose-lg max-w-none">
+                            {{ extracted_content.outputs.output|replace('\n', '<br>')|replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')|safe }}
+                        </div>
+                    </div>
+                </div>
+            {% elif extracted_content.website_content %}
+                <div class="mb-8">
+                    <h3 class="text-xl font-medium text-gray-800 mb-4 pb-2 border-b">Extracted Content</h3>
+                    <div class="bg-white p-6 rounded shadow-sm overflow-auto max-h-screen border border-gray-200">
+                        <div class="prose prose-lg max-w-none">
+                            {{ extracted_content.website_content|replace('\n', '<br>')|replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')|safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Collapsible Details Section -->
+            <details class="mt-6 border rounded-lg">
+                <summary class="text-lg font-medium text-gray-700 p-4 cursor-pointer hover:bg-gray-50">
+                    View Processing Details
+                </summary>
+                <div class="p-4 border-t">
+                    <!-- Error Logs (if failed) -->
+                    {% if extracted_content.state == "FAILED" and extracted_content.logs %}
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-red-700 mb-2">Error Logs</h4>
+                            <div class="bg-red-50 text-red-900 p-3 rounded-md whitespace-pre-wrap text-sm">
+                                {% for log in extracted_content.logs %}
+                                    {% if "__ERROR__" in log %}
+                                        <div class="text-red-700 font-semibold">{{ log }}</div>
+                                    {% elif "__standard__:" in log and "Failed" in log %}
+                                        <div class="text-red-700">{{ log }}</div>
+                                    {% else %}
+                                        <div>{{ log }}</div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Execution Logs -->
+                    {% if extracted_content.logs %}
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-gray-700 mb-2">Execution Logs</h4>
+                            <div class="bg-gray-50 p-3 rounded-md overflow-auto max-h-48 text-sm">
+                                {% for log in extracted_content.logs %}
+                                    <div class="mb-1">{{ log }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Run Details -->
+                    {% if extracted_content.run_details %}
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-gray-700 mb-2">Run Details</h4>
+                            <div class="bg-gray-50 p-3 rounded-md overflow-auto max-h-64">
+                                <pre class="text-xs text-gray-800 whitespace-pre-wrap">{{ extracted_content.run_details|tojson(indent=2) }}</pre>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </details>
         </div>
     {% else %}
-        <p class="text-gray-500 mt-4">No Gumloop data available for this page.</p>
+        <div class="mt-6 py-8 text-center">
+            <p class="text-gray-500">Loading extraction results...</p>
+            <button onclick="window.location.reload()" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200">
+                Refresh
+            </button>
+        </div>
     {% endif %}
-
-    <div class="mt-6">
-        <a href="{{ url_for('main.index') }}" class="text-blue-600 hover:underline">&larr; Back to Saved Pages</a>
+    
+    <div class="mt-6 pt-4 border-t border-gray-200">
+        <a href="{{ url_for('main.index') }}" class="text-blue-600 hover:text-blue-800 text-sm">
+            ← Back to Saved Pages
+        </a>
+    </div>
+    <div class="mt-2 text-xs text-gray-400">
+        Powered by Gumloop
     </div>
 </div>
 {% endblock %}

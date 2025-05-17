@@ -40,7 +40,13 @@ def page_detail(page_id):
             else:
                 gumloop_data = page.gumloop_data
                 
+            # First check for run_id in the Gumloop response
             run_id = gumloop_data.get('run_id')
+            
+            # If run_id is not found in Gumloop response, use saved_item_id from our database
+            if not run_id and page.saved_item_id:
+                logger.info(f"Using saved_item_id as run_id: {page.saved_item_id}")
+                run_id = page.saved_item_id
             
             if run_id:
                 logger.info(f"Fetching extraction for run_id: {run_id}")
@@ -49,6 +55,8 @@ def page_detail(page_id):
                 
                 if extraction_results and not extraction_results.get('error'):
                     extracted_content = extraction_results
+                    # Add detailed debug logging
+                    logger.debug(f"Extracted content: {extracted_content}")
         except Exception as e:
             logger.error(f"Error getting extraction content: {str(e)}")
             extracted_content = {"error": f"Failed to parse extraction results: {str(e)}"}

@@ -49,57 +49,77 @@ def fetch_gumloop_extraction(run_id):
             "Content-Type": "application/json"
         }
         
-        # Construct the results URL as per Gumloop documentation
-        results_url = f"https://api.gumloop.com/v1/runs/{run_id}/outputs"
+        # According to documentation, use the get_pl_run endpoint
+        url = "https://api.gumloop.com/api/v1/get_pl_run"
         
-        logger.debug(f"Fetching extraction results from: {results_url}")
+        # Add query parameters for run_id and user_id
+        params = {
+            "run_id": run_id,
+            "user_id": os.getenv('GUMLOOP_USER_ID', 'P4NeNUZNmKR4t0s5K0K1Gn30EHz1')
+        }
+        
+        logger.debug(f"Fetching run details from: {url} with run_id: {run_id}")
         
         # Add a small delay to ensure the flow has time to complete
         time.sleep(5)
         
         # Get the results
-        response = session.get(results_url, headers=headers, timeout=30)
+        response = session.get(url, headers=headers, params=params, timeout=30)
         
         if response.status_code != 200:
-            logger.error(f"Error fetching extraction results: {response.status_code} - {response.text}")
+            logger.error(f"Error fetching run details: {response.status_code} - {response.text}")
             
             # Create a fallback result with the pipeline URL
-            pipeline_url = f"https://gumloop.com/pipeline?run_id={run_id}"
+            workbook_id = os.getenv('GUMLOOP_WORKBOOK_ID', 'rFq6sXjr3aowj4vEJvoWE6')
+            pipeline_url = f"https://www.gumloop.com/pipeline?run_id={run_id}&workbook_id={workbook_id}"
             return {
                 "run_id": run_id,
                 "extraction_url": pipeline_url,
-                "message": "This content was processed by Gumloop. View the full results by clicking the link above.",
-                "content": {
-                    "title": "Extracted Page Content",
-                    "description": "The extracted content can be viewed at the Gumloop Pipeline URL."
-                }
+                "message": "Could not fetch extraction results automatically. View the full results by clicking the link above.",
+                "error": response.text
             }
             
         # Parse the results
         result_data = response.json()
-        logger.debug(f"Successfully fetched extraction results: {result_data}")
+        logger.debug(f"Successfully fetched run details: {result_data}")
         
-        # Process and return the actual scraped content
-        if "scraped_content" in result_data:
-            return {
-                "run_id": run_id,
-                "extraction_url": f"https://gumloop.com/pipeline?run_id={run_id}",
-                "scraped_content": result_data["scraped_content"],
-                "raw_data": result_data
-            }
-        else:
-            # Return all data if specific field isn't found
-            return {
-                "run_id": run_id,
-                "extraction_url": f"https://gumloop.com/pipeline?run_id={run_id}",
-                "message": "Content processed successfully. See extracted data below.",
-                "data": result_data
-            }
+        # Build a formatted extraction url with workbook_id
+        workbook_id = os.getenv('GUMLOOP_WORKBOOK_ID', 'rFq6sXjr3aowj4vEJvoWE6')
+        pipeline_url = f"https://www.gumloop.com/pipeline?run_id={run_id}&workbook_id={workbook_id}"
+        
+        # Extract website content from outputs if available
+        website_content = None
+        outputs = result_data.get("outputs", {})
+        
+        # Check for common output field names used by Gumloop for website content
+        if "Website Content" in outputs:
+            website_content = outputs["Website Content"]
+        elif "text" in outputs:
+            website_content = outputs["text"]
+        elif "content" in outputs:
+            website_content = outputs["content"]
+        elif "extracted_content" in outputs:
+            website_content = outputs["extracted_content"]
+        elif "html" in outputs:
+            website_content = outputs["html"]
+        
+        # Package all the data together for the template
+        return {
+            "run_id": run_id,
+            "extraction_url": pipeline_url,
+            "message": "Successfully retrieved extraction results.",
+            "run_details": result_data,
+            "outputs": outputs,
+            "website_content": website_content,  # Explicitly include the website content
+            "state": result_data.get("state", "UNKNOWN"),
+            "logs": result_data.get("log", [])
+        }
             
     except Exception as e:
         logger.error(f"Exception while fetching extraction results: {str(e)}")
         # Create a fallback with the pipeline URL
-        pipeline_url = f"https://gumloop.com/pipeline?run_id={run_id}"
+        workbook_id = os.getenv('GUMLOOP_WORKBOOK_ID', 'rFq6sXjr3aowj4vEJvoWE6')
+        pipeline_url = f"https://www.gumloop.com/pipeline?run_id={run_id}&workbook_id={workbook_id}"
         return {
             "run_id": run_id,
             "extraction_url": pipeline_url,
@@ -174,14 +194,13 @@ def create_app():
                     "status": "error"
                 }), 500
 
-            # Generate a unique run ID for this specific execution
-            run_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
-
-            # Process URL through Gumloop API first
+            # Process URL through Gumloop API following the specified structure
             payload = {
                 "user_id": os.getenv('GUMLOOP_USER_ID', 'P4NeNUZNmKR4t0s5K0K1Gn30EHz1'),
-                "saved_item_id": GUMLOOP_SAVED_ITEM_ID,  # Use the configured saved_item_id
-                "pipeline_inputs": [{"url": data['url']}]  # Pass the URL as an input
+                "saved_item_id": GUMLOOP_SAVED_ITEM_ID,
+                "pipeline_inputs": [
+                    {"input_name": "url", "value": data['url']}
+                ]
             }
 
             headers = {
@@ -195,9 +214,9 @@ def create_app():
             # Import SavedPage here to avoid circular imports
             from App.models import SavedPage
 
-            # Make request to Gumloop API with retry logic
+            # Make request to Gumloop API to start the pipeline
             try:
-                gumloop_response = session.post(
+                start_response = session.post(
                     "https://api.gumloop.com/api/v1/start_pipeline",
                     json=payload,
                     headers=headers,
@@ -205,20 +224,23 @@ def create_app():
                 )
                 
                 # Log the full response for debugging
-                logger.debug(f"Gumloop API response status: {gumloop_response.status_code}")
-                logger.debug(f"Gumloop API response headers: {dict(gumloop_response.headers)}")
-                logger.debug(f"Gumloop API response body: {gumloop_response.text}")
+                logger.debug(f"Gumloop API response status: {start_response.status_code}")
+                logger.debug(f"Gumloop API response headers: {dict(start_response.headers)}")
+                logger.debug(f"Gumloop API response body: {start_response.text}")
 
-                if gumloop_response.status_code != 200:
-                    error_msg = f"Error processing URL through Gumloop: {gumloop_response.text}"
+                if start_response.status_code != 200:
+                    error_msg = f"Error processing URL through Gumloop: {start_response.text}"
                     logger.error(error_msg)
+                    
+                    # Generate a fallback ID
+                    fallback_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
                     
                     # Save to database even if Gumloop API fails
                     saved_page = SavedPage(
                         title=data['title'],
                         url=data['url'],
-                        gumloop_data={"error": gumloop_response.text},
-                        saved_item_id=run_id  # Use run_id as the saved_item_id in our database
+                        gumloop_data={"error": start_response.text},
+                        saved_item_id=fallback_id
                     )
                     db.session.add(saved_page)
                     db.session.commit()
@@ -227,17 +249,158 @@ def create_app():
                         "message": "Page saved but Gumloop processing failed. Please try again later.",
                         "status": "partial_success",
                         "error": error_msg,
-                        "run_id": run_id
+                        "run_id": fallback_id
                     }), 202
+                
+                # Get the run_id from the response
+                start_data = start_response.json()
+                run_id = start_data.get('run_id')
+                
+                if not run_id:
+                    logger.error("No run_id found in Gumloop response")
+                    fallback_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
+                    
+                    saved_page = SavedPage(
+                        title=data['title'],
+                        url=data['url'],
+                        gumloop_data=start_data,
+                        saved_item_id=fallback_id
+                    )
+                    db.session.add(saved_page)
+                    db.session.commit()
+                    
+                    return jsonify({
+                        "message": "Page saved but no run_id found. Please try again later.",
+                        "status": "partial_success",
+                        "gumloop_response": start_data,
+                        "run_id": fallback_id
+                    }), 202
+                
+                # Fetch the results immediately (may need to poll if not ready)
+                # Wait a moment for the pipeline to start processing
+                time.sleep(2)
+                
+                # Set up parameters for the GET request
+                get_params = {
+                    "run_id": run_id,
+                    "user_id": os.getenv('GUMLOOP_USER_ID', 'P4NeNUZNmKR4t0s5K0K1Gn30EHz1')
+                }
+                
+                # Maximum number of polling attempts
+                max_attempts = 10
+                # Delay between polling attempts (in seconds)
+                polling_delay = 2
+                
+                # Initialize variables
+                result_data = None
+                final_state = "UNKNOWN"
+                
+                # Poll until the run is completed or max attempts are reached
+                for attempt in range(max_attempts):
+                    logger.debug(f"Fetching run details, attempt {attempt+1}/{max_attempts}")
+                    
+                    get_response = session.get(
+                        "https://api.gumloop.com/api/v1/get_pl_run",
+                        headers=headers,
+                        params=get_params,
+                        timeout=30
+                    )
+                    
+                    if get_response.status_code != 200:
+                        logger.warning(f"Error fetching run details: {get_response.status_code} - {get_response.text}")
+                        time.sleep(polling_delay)
+                        continue
+                    
+                    result_data = get_response.json()
+                    final_state = result_data.get("state", "UNKNOWN")
+                    
+                    # If the run is completed or failed, stop polling
+                    if final_state in ["DONE", "FAILED", "TERMINATED"]:
+                        logger.debug(f"Run complete with state: {final_state}")
+                        break
+                    
+                    # Wait before the next polling attempt
+                    time.sleep(polling_delay)
+                
+                # If we didn't get results or the run didn't complete successfully
+                if not result_data or final_state != "DONE":
+                    logger.warning(f"Run did not complete successfully. Final state: {final_state}")
+                    
+                    # Save to database
+                    saved_page = SavedPage(
+                        title=data['title'],
+                        url=data['url'],
+                        gumloop_data=start_data,
+                        saved_item_id=run_id
+                    )
+                    db.session.add(saved_page)
+                    db.session.commit()
+                    
+                    return jsonify({
+                        "message": f"Page saved but processing not completed. Final state: {final_state}",
+                        "status": "partial_success",
+                        "gumloop_response": start_data,
+                        "run_id": run_id,
+                        "state": final_state
+                    }), 202
+                
+                # Extract website content from outputs if available
+                website_content = None
+                outputs = result_data.get("outputs", {})
+                
+                # Build a formatted extraction url with workbook_id
+                workbook_id = os.getenv('GUMLOOP_WORKBOOK_ID', 'rFq6sXjr3aowj4vEJvoWE6')
+                pipeline_url = f"https://www.gumloop.com/pipeline?run_id={run_id}&workbook_id={workbook_id}"
+                
+                # Check for common output field names used by Gumloop for website content
+                if "Website Content" in outputs:
+                    website_content = outputs["Website Content"]
+                elif "output" in outputs:
+                    website_content = outputs["output"]
+                elif "text" in outputs:
+                    website_content = outputs["text"]
+                elif "content" in outputs:
+                    website_content = outputs["content"]
+                elif "extracted_content" in outputs:
+                    website_content = outputs["extracted_content"]
+                elif "html" in outputs:
+                    website_content = outputs["html"]
+                
+                # Save to database with the complete data
+                saved_page = SavedPage(
+                    title=data['title'],
+                    url=data['url'],
+                    gumloop_data=result_data,
+                    saved_item_id=run_id
+                )
+                db.session.add(saved_page)
+                db.session.commit()
+                
+                logger.info(f"Successfully processed and saved page: {saved_page.title}")
+                
+                # Return the complete response including the website content
+                return jsonify({
+                    "message": f"Successfully processed and saved page: {data['title']}",
+                    "status": "success",
+                    "run_id": run_id,
+                    "website_content": website_content,
+                    "extraction_url": pipeline_url,
+                    "state": final_state,
+                    "logs": result_data.get("log", [])
+                })
 
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request to Gumloop API failed: {str(e)}")
+                
+                # Generate a fallback ID
+                fallback_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
+                
                 # Save to database even if Gumloop API fails
                 saved_page = SavedPage(
                     title=data['title'],
                     url=data['url'],
                     gumloop_data={"error": str(e)},
-                    saved_item_id=run_id  # Use run_id as the saved_item_id in our database
+                    saved_item_id=fallback_id
                 )
                 db.session.add(saved_page)
                 db.session.commit()
@@ -246,27 +409,8 @@ def create_app():
                     "message": "Page saved but Gumloop processing failed. Please try again later.",
                     "status": "partial_success",
                     "error": str(e),
-                    "run_id": run_id
+                    "run_id": fallback_id
                 }), 202
-
-            # If we get here, Gumloop API call was successful
-            saved_page = SavedPage(
-                title=data['title'],
-                url=data['url'],
-                gumloop_data=gumloop_response.json(),
-                saved_item_id=run_id  # Use run_id as the saved_item_id in our database
-            )
-            db.session.add(saved_page)
-            db.session.commit()
-            
-            logger.info(f"Successfully processed and saved page: {saved_page.title}")
-            
-            return jsonify({
-                "message": f"Successfully processed and saved page: {data['title']}",
-                "status": "success",
-                "gumloop_response": gumloop_response.json(),
-                "run_id": run_id
-            })
 
         except Exception as e:
             db.session.rollback()
@@ -305,54 +449,183 @@ def create_app():
                 }), 500
 
             # Prepare payload for Gumloop API
+            saved_item_id = data.get('saved_item_id', GUMLOOP_SAVED_ITEM_ID)
+            if not saved_item_id:
+                logger.error("No saved_item_id provided or configured")
+                return jsonify({
+                    "message": "No saved_item_id provided or configured. Please set GUMLOOP_SAVED_ITEM_ID in environment variables or provide it in the request.",
+                    "status": "error"
+                }), 400
+                
             payload = {
                 "user_id": os.getenv('GUMLOOP_USER_ID', 'P4NeNUZNmKR4t0s5K0K1Gn30EHz1'),
-                "saved_item_id": data.get('saved_item_id', ''),
-                "pipeline_inputs": [{"url": data['url']}]
+                "saved_item_id": saved_item_id,
+                "pipeline_inputs": [
+                    {"input_name": "url", "value": data['url']}
+                ]
             }
-
+            
             headers = {
                 "Authorization": f"Bearer {gumloop_api_key}",
                 "Content-Type": "application/json"
             }
+            
+            logger.debug(f"Sending payload to Gumloop API: {payload}")
 
             # Import SavedPage here to avoid circular imports
             from App.models import SavedPage
 
-            # Make request to Gumloop API
-            response = requests.post(
-                "https://api.gumloop.com/api/v1/start_pipeline",
-                json=payload,
-                headers=headers
-            )
-
-            if response.status_code != 200:
-                logger.error(f"Gumloop API error: {response.text}")
+            # Make request to Gumloop API to start the pipeline
+            try:
+                start_response = session.post(
+                    "https://api.gumloop.com/api/v1/start_pipeline",
+                    json=payload,
+                    headers=headers,
+                    timeout=30
+                )
+                
+                # Log the response
+                logger.debug(f"Start pipeline response: {start_response.status_code} - {start_response.text}")
+                
+                if start_response.status_code != 200:
+                    error_msg = f"Error processing URL through Gumloop: {start_response.text}"
+                    logger.error(error_msg)
+                    return jsonify({
+                        "message": error_msg,
+                        "status": "error"
+                    }), start_response.status_code
+                
+                # Get the run_id from the response
+                start_data = start_response.json()
+                run_id = start_data.get('run_id')
+                
+                if not run_id:
+                    logger.error("No run_id found in Gumloop response")
+                    return jsonify({
+                        "message": "No run_id found in Gumloop response. Please try again later.",
+                        "status": "error",
+                        "gumloop_response": start_data
+                    }), 500
+                
+                # Fetch the results immediately (may need to poll if not ready)
+                # Wait a moment for the pipeline to start processing
+                time.sleep(2)
+                
+                # Set up parameters for the GET request
+                get_params = {
+                    "run_id": run_id,
+                    "user_id": os.getenv('GUMLOOP_USER_ID', 'P4NeNUZNmKR4t0s5K0K1Gn30EHz1')
+                }
+                
+                # Maximum number of polling attempts
+                max_attempts = 10
+                # Delay between polling attempts (in seconds)
+                polling_delay = 2
+                
+                # Initialize variables
+                result_data = None
+                final_state = "UNKNOWN"
+                
+                # Poll until the run is completed or max attempts are reached
+                for attempt in range(max_attempts):
+                    logger.debug(f"Fetching run details, attempt {attempt+1}/{max_attempts}")
+                    
+                    get_response = session.get(
+                        "https://api.gumloop.com/api/v1/get_pl_run",
+                        headers=headers,
+                        params=get_params,
+                        timeout=30
+                    )
+                    
+                    if get_response.status_code != 200:
+                        logger.warning(f"Error fetching run details: {get_response.status_code} - {get_response.text}")
+                        time.sleep(polling_delay)
+                        continue
+                    
+                    result_data = get_response.json()
+                    final_state = result_data.get("state", "UNKNOWN")
+                    
+                    # If the run is completed or failed, stop polling
+                    if final_state in ["DONE", "FAILED", "TERMINATED"]:
+                        logger.debug(f"Run complete with state: {final_state}")
+                        break
+                    
+                    # Wait before the next polling attempt
+                    time.sleep(polling_delay)
+                
+                # If we didn't get results or the run didn't complete successfully
+                if not result_data or final_state != "DONE":
+                    logger.warning(f"Run did not complete successfully. Final state: {final_state}")
+                    
+                    # Save to database
+                    saved_page = SavedPage(
+                        title=data.get('title', 'Untitled'),
+                        url=data['url'],
+                        gumloop_data=start_data,
+                        saved_item_id=run_id
+                    )
+                    db.session.add(saved_page)
+                    db.session.commit()
+                    
+                    return jsonify({
+                        "message": f"Processing not completed. Final state: {final_state}",
+                        "status": "partial_success",
+                        "gumloop_response": start_data,
+                        "run_id": run_id,
+                        "state": final_state
+                    }), 202
+                
+                # Extract website content from outputs if available
+                website_content = None
+                outputs = result_data.get("outputs", {})
+                
+                # Build a formatted extraction url with workbook_id
+                workbook_id = os.getenv('GUMLOOP_WORKBOOK_ID', 'rFq6sXjr3aowj4vEJvoWE6')
+                pipeline_url = f"https://www.gumloop.com/pipeline?run_id={run_id}&workbook_id={workbook_id}"
+                
+                # Check for common output field names used by Gumloop for website content
+                if "Website Content" in outputs:
+                    website_content = outputs["Website Content"]
+                elif "output" in outputs:
+                    website_content = outputs["output"]
+                elif "text" in outputs:
+                    website_content = outputs["text"]
+                elif "content" in outputs:
+                    website_content = outputs["content"]
+                elif "extracted_content" in outputs:
+                    website_content = outputs["extracted_content"]
+                elif "html" in outputs:
+                    website_content = outputs["html"]
+                
+                # Save to database with the complete data
+                saved_page = SavedPage(
+                    title=data.get('title', 'Untitled'),
+                    url=data['url'],
+                    gumloop_data=result_data,
+                    saved_item_id=run_id
+                )
+                db.session.add(saved_page)
+                db.session.commit()
+                
+                logger.info(f"Successfully processed URL: {data['url']}")
+                
+                # Return the complete response including the website content
                 return jsonify({
-                    "message": f"Error processing URL: {response.text}",
+                    "message": "Successfully processed URL",
+                    "status": "success",
+                    "run_id": run_id,
+                    "website_content": website_content,
+                    "extraction_url": pipeline_url,
+                    "state": final_state,
+                    "logs": result_data.get("log", [])
+                })
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Request to Gumloop API failed: {str(e)}")
+                return jsonify({
+                    "message": f"Error processing URL: {str(e)}",
                     "status": "error"
-                }), response.status_code
-
-            # Generate a unique run ID for this specific execution
-            run_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
-
-            # Save to our database
-            saved_page = SavedPage(
-                title=data.get('title', 'Untitled'),
-                url=data['url'],
-                gumloop_data=response.json(),
-                saved_item_id=run_id
-            )
-            db.session.add(saved_page)
-            db.session.commit()
-            
-            logger.info(f"Successfully processed and saved URL: {data['url']}")
-            
-            return jsonify({
-                "message": "Successfully processed URL",
-                "status": "success",
-                "gumloop_response": response.json()
-            })
+                }), 500
 
         except Exception as e:
             db.session.rollback()
