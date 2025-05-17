@@ -651,6 +651,169 @@ def create_app():
                 "status": "error"
             }), 500
 
+    @app.route('/api/mcp-search', methods=['POST', 'OPTIONS'])
+    def mcp_search():
+        """
+        Endpoint to handle MCP search requests from the extension
+        """
+        # Handle preflight request
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            data = request.get_json()
+            if not data or 'query' not in data:
+                return jsonify({
+                    "error": "Missing query parameter"
+                }), 400
+            
+            query = data['query']
+            logger.debug(f"Received search query: {query}")
+            
+            # Check if the request specifies using conversational search
+            use_conversational = data.get('conversational', True)  # Default to conversational search
+            
+            if use_conversational:
+                # Import the conversational search function from mcp_server
+                from mcp_server import conversational_search, claude_client
+                
+                # Check if Claude client is available
+                if not claude_client:
+                    logger.warning("Anthropic Claude client not available. Falling back to basic search.")
+                    from mcp_server import search_database
+                    results = search_database(query)
+                else:
+                    # Perform conversational search
+                    response = conversational_search(query)
+                    return jsonify({
+                        "results": {
+                            "message": "Conversational search results",
+                            "items": [],  # Empty since we're returning direct text response
+                            "conversational_response": response
+                        },
+                        "status": "success"
+                    })
+            else:
+                # Use basic search as fallback
+                from mcp_server import search_database
+                results = search_database(query)
+            
+            return jsonify({
+                "results": results,
+                "status": "success"
+            })
+        
+        except Exception as e:
+            logger.error(f"Error during MCP search: {str(e)}")
+            return jsonify({
+                "error": f"Search failed: {str(e)}",
+                "status": "error"
+            }), 500
+
+    @app.route('/create-event/<int:page_id>', methods=['GET'])
+    def create_event_page(page_id):
+        """
+        Display a page for creating calendar events from saved content
+        """
+        try:
+            # Get the page from the database
+            from App.models import SavedPage
+            page = SavedPage.query.get_or_404(page_id)
+            
+            # Import the date extraction function from mcp_server
+            from mcp_server import extract_dates
+            
+            # Extract potential dates from content
+            content_text = ""
+            if isinstance(page.gumloop_data, dict):
+                for key in ['website_content', 'output', 'content', 'extracted_content', 'text']:
+                    if key in page.gumloop_data and page.gumloop_data[key]:
+                        content_text = page.gumloop_data[key]
+                        break
+            else:
+                content_text = str(page.gumloop_data) if page.gumloop_data else ""
+            
+            # If no content, show message
+            if not content_text:
+                return render_template('create_event.html', 
+                                      page=page, 
+                                      dates=[], 
+                                      error="No content found for this page.")
+            
+            # Extract dates
+            dates = extract_dates(content_text)
+            
+            # Render the event creation page
+            return render_template('create_event.html', 
+                                  page=page, 
+                                  dates=dates, 
+                                  error=None)
+        
+        except Exception as e:
+            logger.error(f"Error displaying event creation page: {str(e)}")
+            return render_template('error.html', 
+                                  message=f"Failed to load event creation page: {str(e)}")
+
+    @app.route('/api/create-event', methods=['POST', 'OPTIONS'])
+    def create_event_api():
+        """
+        API endpoint to create a calendar event or email invitation
+        """
+        # Handle preflight request
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            data = request.get_json()
+            
+            if not data or 'event_title' not in data or 'event_date' not in data:
+                return jsonify({
+                    "error": "Missing required parameters: event_title and event_date",
+                    "status": "error"
+                }), 400
+            
+            # Get the method (calendar or email)
+            method = data.get('method', 'calendar')
+            
+            # Create event or send email
+            if method == 'calendar':
+                from mcp_server import create_calendar_event
+                event_details = {
+                    'title': data['event_title'],
+                    'description': data.get('description', ''),
+                    'start_time': data['event_date'] + ' ' + data.get('start_time', '09:00'),
+                    'end_time': data['event_date'] + ' ' + data.get('end_time', '10:00')
+                }
+                result = create_calendar_event(event_details)
+            else:
+                from mcp_server import send_email_invitation
+                event_details = {
+                    'title': data['event_title'],
+                    'description': data.get('description', ''),
+                    'start_time': data['event_date'] + ' ' + data.get('start_time', '09:00'),
+                    'end_time': data['event_date'] + ' ' + data.get('end_time', '10:00'),
+                    'recipient': data.get('recipient', '')
+                }
+                result = send_email_invitation(event_details)
+            
+            if result.get('success', False):
+                return jsonify({
+                    "message": result.get('message', 'Event created successfully'),
+                    "status": "success"
+                })
+            else:
+                return jsonify({
+                    "error": result.get('error', 'Failed to create event'),
+                    "status": "error"
+                }), 400
+        
+        except Exception as e:
+            logger.error(f"Error creating event: {str(e)}")
+            return jsonify({
+                "error": f"Failed to create event: {str(e)}",
+                "status": "error"
+            }), 500
+
     return app
 
 app = create_app()
