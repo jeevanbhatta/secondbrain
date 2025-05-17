@@ -91,17 +91,33 @@ def fetch_gumloop_extraction(run_id):
         website_content = None
         outputs = result_data.get("outputs", {})
         
+        # Log all available output keys to help debug
+        logger.debug(f"Available output keys: {list(outputs.keys())}")
+        
         # Check for common output field names used by Gumloop for website content
-        if "Website Content" in outputs:
+        if "output" in outputs:
+            logger.debug("Found 'output' field in outputs")
+            website_content = outputs["output"]
+        elif "Website Content" in outputs:
+            logger.debug("Found 'Website Content' field in outputs")
             website_content = outputs["Website Content"]
         elif "text" in outputs:
+            logger.debug("Found 'text' field in outputs")
             website_content = outputs["text"]
         elif "content" in outputs:
+            logger.debug("Found 'content' field in outputs")
             website_content = outputs["content"]
         elif "extracted_content" in outputs:
+            logger.debug("Found 'extracted_content' field in outputs")
             website_content = outputs["extracted_content"]
         elif "html" in outputs:
+            logger.debug("Found 'html' field in outputs")
             website_content = outputs["html"]
+        
+        if website_content:
+            logger.debug(f"Extracted website content (first 100 chars): {website_content[:100]}...")
+        else:
+            logger.warning("No website content found in outputs")
         
         # Package all the data together for the template
         return {
