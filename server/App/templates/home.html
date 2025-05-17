@@ -3,31 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saved Pages</title>
+    <title>SecondBrain – Saved Pages</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+        }
+        .sb-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+        .sb-logo {
+            width: 38px;
+            height: 38px;
+            color: #2563eb;
+        }
+        .sb-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            letter-spacing: -0.5px;
+        }
+        .section-title {
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 28px;
+            margin-top: 0.5rem;
+        }
+        .bookmark-list {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .bookmark-item {
+            padding: 18px 22px;
+            border-radius: 14px;
+            background: #fff;
+            color: #1f2937;
+            font-size: 1.05rem;
+            text-decoration: none;
+            transition: box-shadow 0.15s, border-color 0.15s, color 0.15s, background 0.15s;
+            border: 1.5px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 1px 4px 0 rgb(0 0 0 / 0.04);
+        }
+        .bookmark-item:hover {
+            background: #f3f4f6;
+            color: #2563eb;
+            border-color: #2563eb;
+            box-shadow: 0 4px 12px 0 rgb(37 99 235 / 0.08);
+        }
+        .bookmark-favicon {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            margin-right: 10px;
+        }
+        .bookmark-title {
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+        .bookmark-date {
+            font-size: 0.92rem;
+            color: #6b7280;
+            margin-left: 10px;
+            white-space: nowrap;
+        }
+        .view-toggle {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 24px;
+            gap: 12px;
+        }
+        .toggle-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+            border: 1.5px solid #e5e7eb;
+            color: #6b7280;
+        }
+        .toggle-btn.active {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+        }
+        .toggle-btn:hover:not(.active) {
+            background: #f3f4f6;
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        .date-group {
+            margin-bottom: 24px;
+        }
+        .date-group-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            padding-left: 4px;
+        }
+        .bookmark-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .bookmark-group .bookmark-item {
+            margin: 0;
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8 text-gray-800">Saved Pages</h1>
+<body>
+    <div class="container mx-auto px-4 py-10">
+        <div class="sb-header">
+            <svg class="sb-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
+                <path d="M12 6C8.69 6 6 8.69 6 12C6 15.31 8.69 18 12 18C15.31 18 18 15.31 18 12C18 8.69 15.31 6 12 6ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z" fill="currentColor"/>
+                <path d="M12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10Z" fill="currentColor"/>
+            </svg>
+            <span class="sb-title">SecondBrain</span>
+        </div>
+        <div class="section-title">All Saved Pages</div>
         
+        <div class="view-toggle">
+            <button class="toggle-btn active" onclick="toggleView('list')">List View</button>
+            <button class="toggle-btn" onclick="toggleView('grouped')">Grouped View</button>
+        </div>
+
         {% if saved_pages %}
-            <div class="grid gap-6">
+            <div id="list-view" class="bookmark-list">
                 {% for page in saved_pages %}
-                    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                        <h2 class="text-xl font-semibold mb-2 text-gray-800">
-                            <a href="{{ page.url }}" target="_blank" class="hover:text-blue-600">
-                                {{ page.title }}
-                            </a>
-                        </h2>
-                        <p class="text-gray-600 mb-2">
-                            <a href="{{ page.url }}" target="_blank" class="hover:text-blue-600 break-all">
-                                {{ page.url }}
-                            </a>
-                        </p>
-                        <p class="text-sm text-gray-500">
-                            Saved on: {{ page.saved_at }}
-                        </p>
-                    </div>
+                    <a href="{{ page.url }}" target="_blank" rel="noopener noreferrer" class="bookmark-item">
+                        <img class="bookmark-favicon" src="https://www.google.com/s2/favicons?domain={{ page.url | replace('https://', '') | replace('http://', '') | replace('www.', '') }}" alt="">
+                        <span class="bookmark-title">{{ page.title }}</span>
+                        <span class="bookmark-date">{{ page.saved_at }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+
+            <div id="grouped-view" class="bookmark-list" style="display: none;">
+                {% set ns = namespace(current_date=None) %}
+                {% for page in saved_pages %}
+                    {% set page_date = page.saved_at.strftime('%Y-%m-%d') %}
+                    {% if page_date != ns.current_date %}
+                        {% if not loop.first %}</div></div>{% endif %}
+                        <div class="date-group">
+                            <div class="date-group-title">
+                                {% if page_date == today %}
+                                    Today
+                                {% elif page_date == yesterday %}
+                                    Yesterday
+                                {% else %}
+                                    {{ page_date }}
+                                {% endif %}
+                            </div>
+                            <div class="bookmark-group">
+                        {% set ns.current_date = page_date %}
+                    {% endif %}
+                    <a href="{{ page.url }}" target="_blank" rel="noopener noreferrer" class="bookmark-item">
+                        <img class="bookmark-favicon" src="https://www.google.com/s2/favicons?domain={{ page.url | replace('https://', '') | replace('http://', '') | replace('www.', '') }}" alt="">
+                        <span class="bookmark-title">{{ page.title }}</span>
+                        <span class="bookmark-date">{{ page.saved_at.strftime('%H:%M') }}</span>
+                    </a>
+                    {% if loop.last %}</div></div>{% endif %}
                 {% endfor %}
             </div>
         {% else %}
@@ -36,5 +190,24 @@
             </div>
         {% endif %}
     </div>
+
+    <script>
+        function toggleView(view) {
+            const listView = document.getElementById('list-view');
+            const groupedView = document.getElementById('grouped-view');
+            const buttons = document.querySelectorAll('.toggle-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (view === 'list') {
+                listView.style.display = 'flex';
+                groupedView.style.display = 'none';
+            } else {
+                listView.style.display = 'none';
+                groupedView.style.display = 'flex';
+            }
+        }
+    </script>
 </body>
 </html> 

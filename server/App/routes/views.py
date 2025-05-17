@@ -1,6 +1,8 @@
 from flask import render_template, jsonify, current_app
 from ..models import SavedPage
 from . import main_bp
+
+from datetime import datetime, timedelta
 import json
 import logging
 
@@ -23,7 +25,9 @@ def fetch_gumloop_extraction(run_id):
 @main_bp.route('/')
 def index():
     saved_pages = SavedPage.query.order_by(SavedPage.saved_at.desc()).all()
-    return render_template('index.html', saved_pages=saved_pages)
+    today = datetime.now().strftime('%Y-%m-%d')
+    yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    return render_template('index.html', saved_pages=saved_pages, today=today, yesterday=yesterday)
 
 @main_bp.route('/page/<int:page_id>')
 def page_detail(page_id):
