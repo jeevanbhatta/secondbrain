@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Create Event from "{{ page.title }}"{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <h1 class="mb-4">Create Event from "{{ page.title }}"</h1>
+      
+      {% if error %}
+      <div class="alert alert-danger">
+        {{ error }}
+      </div>
+      {% else %}
+        {% if not dates %}
+        <div class="alert alert-warning">
+          No dates were found in the content. You can still create an event manually.
+        </div>
+        {% else %}
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">Found Dates</h5>
+          </div>
+          <div class="card-body">
+            <p>The following potential event dates were found in the content:</p>
+            <div class="list-group">
+              {% for date in dates %}
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-1">{{ date.text }}</h6>
+                    <p class="mb-1 text-muted">{{ date.context }}</p>
+                  </div>
+                  <button class="btn btn-sm btn-primary select-date" 
+                          data-date="{{ date.date.strftime('%Y-%m-%d') }}">
+                    Use This Date
+                  </button>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Event Details</h5>
+          </div>
+          <div class="card-body">
+            <form id="eventForm">
+              <div class="mb-3">
+                <label for="eventTitle" class="form-label">Event Title</label>
+                <input type="text" class="form-control" id="eventTitle" value="{{ page.title }}" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="eventDate" class="form-label">Event Date</label>
+                <input type="date" class="form-control" id="eventDate" required>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="startTime" class="form-label">Start Time</label>
+                  <input type="time" class="form-control" id="startTime" value="09:00">
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                  <label for="endTime" class="form-label">End Time</label>
+                  <input type="time" class="form-control" id="endTime" value="10:00">
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" rows="3">From {{ page.url }}</textarea>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Method</label>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="method" id="methodCalendar" value="calendar" checked>
+                  <label class="form-check-label" for="methodCalendar">
+                    Google Calendar
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="method" id="methodEmail" value="email">
+                  <label class="form-check-label" for="methodEmail">
+                    Email Invitation
+                  </label>
+                </div>
+              </div>
+              
+              <div class="mb-3" id="recipientContainer" style="display: none;">
+                <label for="recipient" class="form-label">Email Recipient</label>
+                <input type="email" class="form-control" id="recipient" placeholder="email@example.com">
+              </div>
+              
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">Create Event</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <div id="resultArea" class="mt-4" style="display: none;"></div>
+      {% endif %}
+      
+      <div class="mt-4">
+        <a href="{{ url_for('main.page_detail', id=page.id) }}" class="btn btn-outline-secondary">
+          Back to Page Details
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('eventDate').value = today;
+    
+    // Handle date selection from the list
+    const dateButtons = document.querySelectorAll('.select-date');
+    dateButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        document.getElementById('eventDate').value = this.dataset.date;
+      });
+    });
+    
+    // Toggle recipient field visibility based on method
+    const methodRadios = document.querySelectorAll('input[name="method"]');
+    methodRadios.forEach(radio => {
+      radio.addEventListener('change', function() {
+        const recipientContainer = document.getElementById('recipientContainer');
+        if (this.value === 'email') {
+          recipientContainer.style.display = 'block';
+        } else {
+          recipientContainer.style.display = 'none';
+        }
+      });
+    });
+    
+    // Handle form submission
+    const eventForm = document.getElementById('eventForm');
+    eventForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const resultArea = document.getElementById('resultArea');
+      resultArea.innerHTML = '<div class="alert alert-info">Creating event...</div>';
+      resultArea.style.display = 'block';
+      
+      // Gather form data
+      const method = document.querySelector('input[name="method"]:checked').value;
+      const eventData = {
+        event_title: document.getElementById('eventTitle').value,
+        event_date: document.getElementById('eventDate').value,
+        start_time: document.getElementById('startTime').value,
+        end_time: document.getElementById('endTime').value,
+        description: document.getElementById('description').value,
+        method: method
+      };
+      
+      // Add recipient if email method
+      if (method === 'email') {
+        eventData.recipient = document.getElementById('recipient').value;
+      }
+      
+      try {
+        // Send request to create event
+        const response = await fetch('/api/create-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(eventData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          resultArea.innerHTML = `
+            <div class="alert alert-success">
+              <h5>Success!</h5>
+              <p>${data.message}</p>
+            </div>
+          `;
+        } else {
+          resultArea.innerHTML = `
+            <div class="alert alert-danger">
+              <h5>Error</h5>
+              <p>${data.error || 'Unknown error occurred'}</p>
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultArea.innerHTML = `
+          <div class="alert alert-danger">
+            <h5>Error</h5>
+            <p>Failed to create event: ${error.message}</p>
+          </div>
+        `;
+      }
+    });
+  });
+</script>
+{% endblock %} 
