@@ -1,105 +1,108 @@
+# SecondBrain: Your Intelligent Bookmarking Tool
 
-To implement MCP for searching your database and adding calendar event functionality, I'll need to:
+## 🌟 Highlights
 
-1. Create an MCP server that connects to your database
-2. Add a date extraction and calendar integration feature
+* **More than bookmarks** - Saves full context of web pages, not just links
+* **Natural language search** - Ask questions about your saved content
+* **Intelligent retrieval** - Find information even when your query doesn't exactly match saved text
+* **Browser integration** - Seamlessly save pages while browsing
+* **Self-hostable** - Keep your data private and secure
 
-Let's start by examining your app structure and implementing the necessary code.
+## 📖 Overview
 
-Read file: server/app.py
+SecondBrain transforms how you save and retrieve web content. Unlike traditional bookmarking tools that only save links, SecondBrain captures the full context of web pages and makes them searchable using natural language.
 
-Read file: requirements.txt
+Think of it as your personal research assistant: it captures what you read, remembers it for you, and helps you find it again with simple questions like "What were those articles I saved about AI ethics?"
 
-Read file: server/requirements.txt
-Let's create an MCP implementation for your SecondBrain app. I'll build this in steps:
+### 🧠 Inspiration
 
-1. First, I'll create the MCP server that connects to your database
-2. Then add the date extraction and calendar integration feature
+We were frustrated by the limitations of traditional bookmarking tools—they save links but not context. Often, we'd bookmark dozens of articles only to forget why we saved them in the first place. SecondBrain was born from the idea of creating a more intelligent, question-friendly way to organize and retrieve web content.
 
-## Step 1: Create an MCP Server
+### 👤 Authors
 
+SecondBrain is a hackathon project created by a team of developers passionate about knowledge management and AI-enhanced productivity tools.
 
-Now, let's create an MCP server component for your SecondBrain application:
+## 🚀 Features
 
+- **Smart Page Capture**: Saves URLs, metadata, and full page content
+- **AI-Powered Search**: Find saved content with natural language queries
+- **Instant Previews**: Quickly view saved pages without leaving the extension
+- **Semantic Understanding**: Returns relevant results even when query words don't match exactly
+- **Clean Interface**: Intuitive UI that feels lightweight and functional
 
-Now, let's create an integration with the browser extension to leverage this MCP server. We need to see the current extension code structure to understand how to implement the integration.
+## 💻 How We Built It
 
-Ran tool
-Let's look at the extension's popup.js and popup.html to understand the current UI and functionality:
+SecondBrain is built as a Chrome extension + full-stack application with three main components:
 
-Read file: extension/popup.js
+### Browser Extension
+- Captures page URL, metadata and contents on click
+- Sends payload to our Flask API
+- Provides instant search interface
 
-Read file: extension/popup.html
-Now let's implement the MCP integration for the browser extension. We'll modify the existing files to add the search and calendar functionality:
+### Backend (Flask)
+- Processes and extracts text content from web pages
+- Uses Model Context Protocol (MCP) with Anthropic's Claude for intelligent search
+- Stores page data in SQLite database
 
+### Web Interface
+- Displays bookmarks and search results
+- Provides detailed views of saved content
+- Allows for content management and organization
 
-Now, let's update the popup.html file to add the search results section and clear search button:
+Our tech stack was chosen for rapid iteration, ease of self-hosting, and efficient semantic search capabilities.
 
+## 🔧 Installation
 
-Now, let's add the necessary API endpoints to the Flask app to handle MCP search and calendar event creation:
+### Prerequisites
+- Python 3.8+
+- Chrome/Chromium browser
+- Anthropic API key (for Claude integration)
 
-
-Now let's create the template for the event creation page:
-
-
-Let's also create a simple error template:
-
-
-Finally, let's create a script to run the MCP server:
-
-
-Now let's make the script executable:
-
-```bash
-chmod +x run_mcp.py
+### Server Setup
+1. Clone the repository:
 ```
-Let's summarize what we've implemented to enhance your SecondBrain extension:
-
-1. **MCP (Model Context Protocol) Integration**:
-   - Created a dedicated MCP server (`mcp_server.py`) that provides AI models with access to your saved content
-   - Implemented search functionality to find relevant content in your database
-   - Added date extraction capabilities to identify potential events in saved pages
-
-2. **Calendar Event Creation**:
-   - Added the ability to create Google Calendar events from dates found in content
-   - Implemented email invitation sending as an alternative
-   - Created a user interface for event creation and configuration
-
-3. **UI Enhancements**:
-   - Updated the browser extension to display search results
-   - Added event creation buttons for each search result
-   - Improved the user experience with clear feedback and error handling
-
-To run and test your implementation:
-
-1. Install the new dependencies:
-```
-pip install modelcontextprotocol dateutil google-api-python-client google-auth-httplib2 google-auth-oauthlib
+git clone https://github.com/yourusername/secondbrain.git
+cd secondbrain
 ```
 
-2. Start the Flask application:
+2. Install server dependencies:
+```
+cd server
+pip install -r requirements.txt
+```
+
+3. Set up environment variables:
+```
+export ANTHROPIC_API_KEY=your_api_key_here
+```
+
+4. Start the server:
 ```
 python app.py
 ```
 
-3. In a separate terminal, start the MCP server:
-```
-./run_mcp.py
-```
+### Browser Extension Setup
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" and select the `extension` folder from this repo
+4. Click the SecondBrain icon in your browser toolbar to start using it
 
-4. Install or reload your browser extension to see the new functionality.
+## 🤝 Contributing
 
-For the Google Calendar integration, you'll need to create credentials by:
-1. Go to the Google Cloud Console
-2. Create a new project 
-3. Enable the Google Calendar API
-4. Create OAuth 2.0 credentials
-5. Download the JSON file and save it as `credentials.json` in your server directory
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-For email sending, you'll need to set the following environment variables:
-```
-SMTP_USERNAME=your-email@example.com
-SMTP_PASSWORD=your-password
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-This implementation provides a complete solution for searching your saved pages using MCP and creating calendar events or email invitations when dates are found in the content.
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Anthropic Claude](https://www.anthropic.com/) for powering our semantic search
+- [Model Context Protocol](https://github.com/anthropics/anthropic-tools) for enabling AI integration
+- All the users who provided feedback during development
