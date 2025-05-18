@@ -1,10 +1,11 @@
-from flask import render_template, jsonify, current_app
+from flask import render_template, jsonify, current_app, request, redirect, url_for
 from ..models import SavedPage
 from . import main_bp
 
 from datetime import datetime, timedelta
 import json
 import logging
+import re
 
 # Setup logger without importing from app
 logger = logging.getLogger(__name__)
@@ -21,6 +22,11 @@ def fetch_gumloop_extraction(run_id):
         logger.error("fetch_gumloop_extraction function not available in app config")
         return {"error": "Extraction function not configured"}
 
+# Helper function for extracting URLs from text
+def extract_urls(text):
+    """Extract URLs from text using regex"""
+    url_pattern = r'https?://[^\s<>"\']+|www\.[^\s<>"\']+\.[^\s<>"\']+'
+    return re.findall(url_pattern, text)
 
 @main_bp.route('/')
 def index():
@@ -68,13 +74,66 @@ def page_detail(page_id):
     
     return render_template('page_detail.html', page=page, extracted_content=extracted_content)
 
+@main_bp.route('/search', methods=['GET', 'POST'])
+def search():
+    """Search endpoint for web UI"""
+    query = None
+    results = None
+    
+    if request.method == 'POST':
+        query = request.form.get('query', '').strip()
+        
+        if query:
+            # Import the conversational_search function from app.py
+            if 'mcp_conversational_search' in current_app.config:
+                try:
+                    search_function = current_app.config['mcp_conversational_search']
+                    # Call the function instead of treating it as a data structure
+                    response = search_function(query)
+                    
+                    # Format the results properly for the template
+                    # If it's already a string, wrap it in a structure the template expects
+                    if isinstance(response, str):
+                        results = {
+                            "conversational_response": response,
+                            "items": []  # Empty items array
+                        }
+                    # If it's a dict, ensure it has the right structure
+                    elif isinstance(response, dict):
+                        # If it has 'conversational_response' field, ensure it has 'items'
+                        if 'conversational_response' in response:
+                            if 'items' not in response:
+                                response['items'] = []
+                            results = response
+                        # Otherwise, format it appropriately
+                        else:
+                            results = {
+                                "conversational_response": response.get('message', 'No response available'),
+                                "items": response.get('items', [])
+                            }
+                    # Fallback for unknown response format
+                    else:
+                        results = {
+                            "conversational_response": "Received a response in an unexpected format",
+                            "items": []
+                        }
+                        
+                    # Log the results structure for debugging
+                    logger.debug(f"Search results structure: {results}")
+                        
+                except Exception as e:
+                    logger.error(f"Error in search: {str(e)}")
+                    results = {"error": f"Search failed: {str(e)}", "items": []}
+            else:
+                results = {"error": "Search functionality not available", "items": []}
+    
+    return render_template('search.html', query=query, results=results)
 
 @main_bp.route('/about')
 def about():
     return render_template('about.html')
 
-
-# New API endpoint for recent bookmarks
+# API endpoint for recent bookmarks
 @main_bp.route('/api/recent-pages')
 def api_recent_pages():
     recent = SavedPage.query.order_by(SavedPage.saved_at.desc()).limit(5).all()

@@ -8,6 +8,7 @@ import uuid
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from urllib.parse import urlparse as url_parse
 
 # Load environment variables
 load_dotenv()
@@ -153,8 +154,38 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///saved_pages.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Add the fetch_gumloop_extraction function to app config so it can be accessed from views
+    # Add utility functions to app config so they can be accessed from views
     app.config['fetch_gumloop_extraction'] = fetch_gumloop_extraction
+    
+    # Add MCP search functions to app config
+    from run_mcp import conversational_search
+    app.config['mcp_conversational_search'] = conversational_search
+
+    # Register Jinja filters
+    @app.template_filter('urlparse')
+    def urlparse_filter(url, part='netloc'):
+        parsed = url_parse(url)
+        if part == 'netloc':
+            return parsed.netloc
+        return getattr(parsed, part, '')
+        
+    # Register markdown filter
+    @app.template_filter('markdown')
+    def markdown_filter(text):
+        try:
+            import markdown2
+            from markupsafe import Markup
+            rendered = markdown2.markdown(text, extras=['link-patterns'])
+            return Markup(rendered)
+        except ImportError:
+            return text
+            
+    # Register URL extraction filter
+    import re
+    @app.template_filter('find_urls')
+    def find_urls(text):
+        url_pattern = r'https?://[^\s<>"\']+|www\.[^\s<>"\']+\.[^\s<>"\']+'
+        return re.findall(url_pattern, text)
 
     # Simple CORS configuration
     CORS(app)
@@ -682,26 +713,49 @@ def create_app():
                     logger.warning("Anthropic Claude client not available. Falling back to basic search.")
                     from mcp_server import search_database
                     results = search_database(query)
-                else:
-                    # Perform conversational search
-                    response = conversational_search(query)
+                    # Format results consistently
                     return jsonify({
                         "results": {
-                            "message": "Conversational search results",
-                            "items": [],  # Empty since we're returning direct text response
-                            "conversational_response": response
+                            "message": "Basic search results (AI search unavailable)",
+                            "items": results.get("items", []),
                         },
                         "status": "success"
                     })
+                else:
+                    # Perform conversational search
+                    response = conversational_search(query)
+                    
+                    # Handle if response is a string (direct text response)
+                    if isinstance(response, str):
+                        return jsonify({
+                            "results": {
+                                "message": "Conversational search results",
+                                "items": [],  # Empty since we're returning direct text response
+                                "conversational_response": response
+                            },
+                            "status": "success"
+                        })
+                    # Handle if response is already a dictionary
+                    elif isinstance(response, dict):
+                        if "conversational_response" not in response:
+                            response["conversational_response"] = response.get("message", "")
+                        if "items" not in response:
+                            response["items"] = []
+                        
+                        return jsonify({
+                            "results": response,
+                            "status": "success"
+                        })
             else:
                 # Use basic search as fallback
                 from mcp_server import search_database
                 results = search_database(query)
-            
-            return jsonify({
-                "results": results,
-                "status": "success"
-            })
+                
+                # Format results consistently
+                return jsonify({
+                    "results": results,
+                    "status": "success"
+                })
         
         except Exception as e:
             logger.error(f"Error during MCP search: {str(e)}")

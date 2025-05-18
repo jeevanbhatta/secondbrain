@@ -3,51 +3,149 @@
 {% block title %}Saved Pages - Second Brain{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="max-w-4xl mx-auto">
+    <div class="sb-header flex items-center justify-center gap-4 mb-6">
+        <svg class="w-10 h-10 text-blue-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
+            <path d="M12 6C8.69 6 6 8.69 6 12C6 15.31 8.69 18 12 18C15.31 18 18 15.31 18 12C18 8.69 15.31 6 12 6ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z" fill="currentColor"/>
+            <path d="M12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10Z" fill="currentColor"/>
+        </svg>
+        <h1 class="text-3xl font-bold text-gray-800">SecondBrain</h1>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="mb-12">
+        <form action="{{ url_for('main.search') }}" method="post" class="w-full flex flex-col items-center">
+            <div class="w-full max-w-2xl relative">
+                <input 
+                    type="text" 
+                    id="questionBar" 
+                    name="query"
+                    placeholder="Ask me anything from your bookmarks..." 
+                    autocomplete="off"
+                    class="w-full px-5 py-3 border-2 border-gray-300 rounded-2xl text-lg focus:outline-none focus:border-blue-500 transition"
+                >
+                <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">Saved Pages</h2>
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Saved Pages</h2>
+        
+        <!-- View Toggle -->
+        <div class="view-toggle flex justify-center mb-6 gap-3">
+            <button class="toggle-btn active px-4 py-2 rounded-lg bg-blue-600 text-white font-medium" onclick="toggleView('list')">List View</button>
+            <button class="toggle-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium" onclick="toggleView('grouped')">Grouped View</button>
+        </div>
         
         {% if saved_pages %}
-            <div class="space-y-4">
+            <!-- List View -->
+            <div id="list-view" class="space-y-4">
                 {% for page in saved_pages %}
-                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-gray-900">
-                                    <a href="{{ url_for('main.page_detail', page_id=page.id) }}" class="hover:text-blue-600">
-                                        {{ page.title }}
-                                    </a>
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    <a href="{{ page.url }}" target="_blank" class="hover:text-blue-600 break-all">
-                                        {{ page.url }}
-                                    </a>
-                                </p>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    Saved on: {{ page.saved_at.strftime('%Y-%m-%d %H:%M:%S') }}
-                                </p>
-                                {% if page.saved_item_id %}
-                                    <p class="text-sm text-gray-500">
-                                        Run ID: {{ page.saved_item_id }}
-                                    </p>
-                                {% endif %}
-                            </div>
+                    <div class="bookmark-item border rounded-lg hover:shadow-md transition-shadow bg-white">
+                        <!-- URL with favicon -->
+                        <div class="bookmark-url flex items-center text-sm text-gray-500 font-mono px-4 pt-3 truncate">
+                            <img class="w-4 h-4 mr-2" src="https://www.google.com/s2/favicons?domain={{ page.url | urlparse('netloc') }}" alt="">
+                            {{ page.url }}
                         </div>
-
-                        {% if page.gumloop_data %}
-                            <div class="mt-4">
-                                <h4 class="text-sm font-medium text-gray-700 mb-2">Gumloop Processing Results:</h4>
-                                <div class="bg-gray-50 rounded p-3 gumloop-data">
-                                    <pre class="text-sm text-gray-800">{{ page.gumloop_data | tojson(indent=2) }}</pre>
-                                </div>
-                            </div>
-                        {% endif %}
+                        
+                        <!-- Title and info -->
+                        <div class="p-4 pt-2">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <a href="{{ url_for('main.page_detail', page_id=page.id) }}" class="hover:text-blue-600">
+                                    {{ page.title }}
+                                </a>
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-2">
+                                Saved on: {{ page.saved_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </p>
+                        </div>
                     </div>
                 {% endfor %}
             </div>
+
+            <!-- Grouped View -->
+            <div id="grouped-view" class="hidden">
+                {% set ns = namespace(current_date=None) %}
+                {% for page in saved_pages %}
+                    {% set page_date = page.saved_at.strftime('%Y-%m-%d') %}
+                    {% if page_date != ns.current_date %}
+                        {% if not loop.first %}</div></div>{% endif %}
+                        <div class="date-group mb-8">
+                            <div class="date-group-title text-lg font-semibold text-gray-800 mb-3 px-2">
+                                {% if page_date == today %}
+                                    Today
+                                {% elif page_date == yesterday %}
+                                    Yesterday
+                                {% else %}
+                                    {{ page.saved_at.strftime('%B %d, %Y') }}
+                                {% endif %}
+                            </div>
+                            <div class="bookmark-group space-y-3">
+                        {% set ns.current_date = page_date %}
+                    {% endif %}
+                    <div class="bookmark-item border rounded-lg hover:shadow-md transition-shadow bg-white">
+                        <!-- URL with favicon -->
+                        <div class="bookmark-url flex items-center text-sm text-gray-500 font-mono px-4 pt-3 truncate">
+                            <img class="w-4 h-4 mr-2" src="https://www.google.com/s2/favicons?domain={{ page.url | urlparse('netloc') }}" alt="">
+                            {{ page.url }}
+                        </div>
+                        
+                        <!-- Title and info -->
+                        <div class="p-4 pt-2">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <a href="{{ url_for('main.page_detail', page_id=page.id) }}" class="hover:text-blue-600">
+                                    {{ page.title }}
+                                </a>
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-2">
+                                Saved at: {{ page.saved_at.strftime('%H:%M') }}
+                            </p>
+                        </div>
+                    </div>
+                    {% if loop.last %}</div></div>{% endif %}
+                {% endfor %}
+            </div>
         {% else %}
-            <p class="text-gray-500 text-center py-4">No pages saved yet.</p>
+            <div class="text-center py-12">
+                <p class="text-gray-600 text-lg">No pages saved yet.</p>
+            </div>
         {% endif %}
     </div>
 </div>
+
+<script>
+    function toggleView(view) {
+        const listView = document.getElementById('list-view');
+        const groupedView = document.getElementById('grouped-view');
+        const buttons = document.querySelectorAll('.toggle-btn');
+        
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.remove('bg-blue-600');
+            btn.classList.remove('text-white');
+            btn.classList.add('bg-gray-100');
+            btn.classList.add('text-gray-700');
+        });
+        
+        event.target.classList.add('active');
+        event.target.classList.add('bg-blue-600');
+        event.target.classList.add('text-white');
+        event.target.classList.remove('bg-gray-100');
+        event.target.classList.remove('text-gray-700');
+        
+        if (view === 'list') {
+            listView.classList.remove('hidden');
+            groupedView.classList.add('hidden');
+        } else {
+            listView.classList.add('hidden');
+            groupedView.classList.remove('hidden');
+        }
+    }
+</script>
 {% endblock %}

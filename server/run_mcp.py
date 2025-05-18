@@ -7,7 +7,7 @@ Run this script to start the MCP server for responding to AI assistant queries
 import os
 import sys
 import logging
-from mcp_server import run_mcp_server
+from mcp_server import run_mcp_server, search_database, conversational_search
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -22,7 +22,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-if __name__ == "__main__":
+# Load environment variables
+def load_environment():
     # Load .env file from project root (one directory up from server)
     project_root = Path(__file__).parent.parent
     env_path = project_root / '.env'
@@ -32,7 +33,11 @@ if __name__ == "__main__":
         logger.info(f"ANTHROPIC_API_KEY found: {bool(os.getenv('ANTHROPIC_API_KEY'))}")
     else:
         logger.warning(f".env file not found at {env_path}")
-    
+
+# Execute this when imported
+load_environment()
+
+if __name__ == "__main__":
     logger.info("Starting SecondBrain MCP Server...")
     try:
         run_mcp_server()
