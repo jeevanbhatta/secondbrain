@@ -695,7 +695,10 @@ def create_app():
             data = request.get_json()
             if not data or 'query' not in data:
                 return jsonify({
-                    "error": "Missing query parameter"
+                    "error": "Missing query parameter",
+                    "results": {
+                        "items": []
+                    }
                 }), 400
             
             query = data['query']
@@ -737,19 +740,23 @@ def create_app():
                         })
                     # Handle if response is already a dictionary
                     elif isinstance(response, dict):
-                        if "conversational_response" not in response:
-                            response["conversational_response"] = response.get("message", "")
-                        if "items" not in response:
-                            response["items"] = []
+                        formatted_response = {
+                            "conversational_response": response.get("conversational_response", response.get("message", "")),
+                            "items": response.get("items", [])
+                        }
                         
                         return jsonify({
-                            "results": response,
+                            "results": formatted_response,
                             "status": "success"
                         })
             else:
                 # Use basic search as fallback
                 from mcp_server import search_database
                 results = search_database(query)
+                
+                # Make sure we have an items property, even if empty
+                if "items" not in results:
+                    results["items"] = []
                 
                 # Format results consistently
                 return jsonify({
@@ -761,7 +768,10 @@ def create_app():
             logger.error(f"Error during MCP search: {str(e)}")
             return jsonify({
                 "error": f"Search failed: {str(e)}",
-                "status": "error"
+                "status": "error",
+                "results": {
+                    "items": []
+                }
             }), 500
 
     @app.route('/create-event/<int:page_id>', methods=['GET'])
