@@ -175,7 +175,7 @@ def create_app():
         try:
             import markdown2
             from markupsafe import Markup
-            rendered = markdown2.markdown(text, extras=['link-patterns'])
+            rendered = markdown2.markdown(text, extras=['fenced-code-blocks', 'tables', 'code-friendly'])
             return Markup(rendered)
         except ImportError:
             return text
