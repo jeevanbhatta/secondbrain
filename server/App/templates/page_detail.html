@@ -4,14 +4,17 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto bg-white shadow rounded-lg p-6 mt-8">
-    <!-- URL with favicon -->
-    <div class="url-container flex items-center text-gray-500 font-mono mb-4 pb-4 border-b border-gray-200">
-        <img class="w-5 h-5 mr-2" src="https://www.google.com/s2/favicons?domain={{ page.url|urlparse('netloc') }}" alt="">
-        <a href="{{ page.url }}" target="_blank" class="hover:text-blue-600 break-all">{{ page.url }}</a>
+    <!-- URL with favicon - now more prominent -->
+    <div class="url-container flex items-center mb-5">
+        <img class="w-6 h-6 mr-3" src="https://www.google.com/s2/favicons?domain={{ page.url|urlparse('netloc') }}" alt="">
+        <a href="{{ page.url }}" target="_blank" class="text-blue-600 text-lg font-medium hover:underline break-all">{{ page.url }}</a>
     </div>
 
-    <h2 class="text-2xl font-bold text-gray-900 mb-3">{{ page.title }}</h2>
-    <p class="text-sm text-gray-500 mb-6">Saved on {{ page.saved_at.strftime('%B %d, %Y at %H:%M') }}</p>
+    <!-- Title and metadata -->
+    <h2 class="text-2xl font-bold text-gray-900 mb-3 border-t border-gray-100 pt-4">{{ page.title }}</h2>
+    <p class="text-sm text-gray-500 mb-6">
+        Saved on {{ page.saved_at.strftime('%B %d, %Y at %H:%M') }}
+    </p>
 
     <!-- Loading Spinner (hidden by default) -->
     <div id="loadingSpinner" class="loading-container hidden">

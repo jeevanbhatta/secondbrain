@@ -46,9 +46,10 @@
             <div class="conversation-response w-full max-w-2xl mx-auto flex flex-col gap-4">
                 
                 {% if results.get('items') and results.get('items')|length > 0 and results.get('items')[0].get('url') %}
-                    <div class="conversation-url-container flex items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <img class="conversation-favicon w-4 h-4 mr-2" src="https://www.google.com/s2/favicons?domain={{ results.get('items')[0].get('url')|urlparse('netloc') }}" alt="">
-                        <div class="conversation-url text-sm text-gray-500 font-mono truncate">{{ results.get('items')[0].get('url') }}</div>
+                    <!-- URL with favicon - displayed more prominently at top -->
+                    <div class="conversation-url-container flex items-center bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <img class="conversation-favicon w-5 h-5 mr-3" src="https://www.google.com/s2/favicons?domain={{ results.get('items')[0].get('url')|urlparse('netloc') }}" alt="">
+                        <a href="{{ results.get('items')[0].get('url') }}" target="_blank" class="text-blue-600 font-medium text-base hover:underline break-all">{{ results.get('items')[0].get('url') }}</a>
                     </div>
                 {% endif %}
                 
@@ -65,9 +66,11 @@
                 {% if not (results.get('items') and results.get('items')|length > 0 and results.get('items')[0].get('url')) %}
                     {% set found_urls = results.conversational_response|find_urls %}
                     {% if found_urls|length > 0 %}
-                        <div class="conversation-extracted-url-container mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                            <div class="url-label text-sm font-medium text-gray-600 mb-1">Mentioned URL:</div>
-                            <a href="{{ found_urls[0] }}" target="_blank" class="text-blue-600 text-sm break-all hover:underline">{{ found_urls[0] }}</a>
+                        <div class="conversation-extracted-url-container mt-3 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div class="flex items-center">
+                                <img class="conversation-favicon w-5 h-5 mr-3" src="https://www.google.com/s2/favicons?domain={{ found_urls[0]|urlparse('netloc') }}" alt="">
+                                <a href="{{ found_urls[0] }}" target="_blank" class="text-blue-600 font-medium text-base hover:underline break-all">{{ found_urls[0] }}</a>
+                            </div>
                         </div>
                     {% endif %}
                 {% endif %}
@@ -81,16 +84,20 @@
                 <div class="search-result-items space-y-5">
                     {% for item in results.get('items', []) %}
                         <div class="search-result-item bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                            <div class="result-url flex items-center text-sm text-gray-500 font-mono mb-1 truncate">
-                                <img class="w-4 h-4 mr-2" src="https://www.google.com/s2/favicons?domain={{ item.url|urlparse('netloc') }}" alt="">
-                                {{ item.url }}
+                            <!-- URL with favicon - now first and more prominent -->
+                            <div class="result-url flex items-center text-gray-700 font-mono mb-3 truncate">
+                                <img class="w-5 h-5 mr-2" src="https://www.google.com/s2/favicons?domain={{ item.url|urlparse('netloc') }}" alt="">
+                                <a href="{{ item.url }}" target="_blank" class="hover:text-blue-600 text-base truncate">
+                                    {{ item.url }}
+                                </a>
                             </div>
                             
-                            <a href="{{ item.url }}" target="_blank" class="result-title block text-blue-600 font-medium text-lg mb-2 hover:underline">
-                                {{ item.title }}
-                            </a>
+                            <!-- Title as secondary element -->
+                            <h3 class="page-title block text-blue-600 font-medium text-xl mb-2 hover:underline">
+                                <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
+                            </h3>
                             
-                            <div class="result-snippet text-gray-600 text-sm">
+                            <div class="result-snippet text-gray-600 text-sm mt-2">
                                 {{ item.content_snippet or 'No content preview available' }}
                             </div>
                             
